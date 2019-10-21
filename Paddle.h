@@ -4,9 +4,9 @@
 
 using namespace glm;
 struct Paddle {
-	vec2 m_position;
 	float m_height;
-	
+	vec2 m_position;
+		
 	bool intersectBall(Ball const& ball);
 	void draw();
 };

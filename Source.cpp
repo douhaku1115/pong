@@ -7,6 +7,7 @@
 #include "Ball.h"
 #include <time.h>
 #include "Paddle.h"
+#define PLAYER_MAX 2
 
 using namespace glm;
 #define BALL_MAX 2
@@ -14,6 +15,7 @@ ivec2 windowSize = { 800, 600 };
 
 bool keys[256];
 Paddle paddle;
+Paddle paddles[PLAYER_MAX];
 Ball balls[BALL_MAX];
 Ball ball = { 8 };
 Rect rect1 = Rect(vec2(100, 100), vec2(100, 200));
@@ -33,29 +35,10 @@ void display(void) {
 	glLoadIdentity();
 	
 	ball.draw();
-	/*glColor3ub(0xff, 0xff, 0xff);
-	paddle.draw();
 
-	if (rect1.intersect(rect2))
-		glColor3ub(0xff, 0x00, 0x00);
-	else
-		glColor3ub(0x00, 0x00, 0xff);
-
-	rect1.draw();
-
+	for (int i = 0; i < PLAYER_MAX; i++)
+		paddles[i].draw();
 	
-	glColor3ub(0x00, 0xff, 0x00);
-	rect2.draw();
-
-	static float angle;
-	if (keys['d']) angle += 1;
-	if (keys['a']) angle -= 1;
-	
-	glColor3ub(0xff, 0xff, 0xff);
-	
-
-	for (int i = 0; i < BALL_MAX; i++)//;
-		balls[i].draw(); */
 
 	fontBegin();
 	fontSetColor(0, 0xff, 0);
@@ -75,7 +58,17 @@ void display(void) {
 };
 
 void idle(void){
+	float paddleSpeed = 8;
+	if (keys['w']) paddles[0].m_position.y -= paddleSpeed;
+	if (keys['s']) paddles[0].m_position.y += paddleSpeed;
+	if (keys['i']) paddles[1].m_position.y -= paddleSpeed;
+	if (keys['k']) paddles[1].m_position.y += paddleSpeed;
 
+	for (int i = 0; i < PLAYER_MAX; i++) {
+		paddles[i].m_position.y = max(paddles[i].m_position.y, 0.f);
+		paddles[i].m_position.y = min(paddles[i].m_position.y, windowSize.y-paddles[i].m_height);
+
+	}
 	ball.update();
 
 	if (ball.m_position.y < 0) {
@@ -95,36 +88,16 @@ void idle(void){
 		ball.m_speed.x = fabs(ball.m_speed.x);
 	}
 
-	for (int i = 0; i < BALL_MAX; i++){
-		balls[i].update();
+	for (int i = 0; i < PLAYER_MAX; i++) {
+		if (paddles[i].intersectBall(ball)) {
+			ball.m_position = ball.m_lastPosition;
+			ball.m_speed.x *= -1;
 
-		if (paddle.intersectBall(balls[i])) {
-			balls[i].m_position = balls[i].m_lastPosition;
-			balls[i].m_speed.x *= -1;
-		}
-
-		if (balls[i].m_position.y < 0) {
-			balls[i].m_position = balls[i].m_lastPosition;
-			balls[i].m_speed.y = fabs(balls[i].m_speed.y);
-		}
-		if (balls[i].m_position.y >= windowSize.y) {
-			balls[i].m_position = balls[i].m_lastPosition;
-			balls[i].m_speed.y = -fabs(balls[i].m_speed.y);
-		}
-		if (balls[i].m_position.x >= windowSize.x) {
-			balls[i].m_position = balls[i].m_lastPosition;
-			balls[i].m_speed.x = -fabs(balls[i].m_speed.x);
-		}
-		if (balls[i].m_position.x < 0) {
-			balls[i].m_position = balls[i].m_lastPosition;
-			balls[i].m_speed.x = fabs(balls[i].m_speed.x);
+			float paddleCenterY = paddles[i].m_position.y + paddles[i].m_height / 2;
+			float subMax = paddles[i].m_height;
+			ball.m_speed.y = (ball.m_position.y - paddleCenterY)/subMax*16;
 		}
 	}
-	float f = 2;
-	if (keys['w']) rect1.m_position.y -= f;
-	if (keys['s']) rect1.m_position.y += f;
-	if (keys['a']) rect1.m_position.x -= f;
-	if (keys['d']) rect1.m_position.x += f;
 	
 	glutPostRedisplay();
 }
@@ -154,9 +127,13 @@ void passiveMotion(int x, int y) {
 }
 int main(int argc, char* argv[]) {
 	srand(time(NULL));
-	ball.m_speed = vec2(1, 1)*2.f;
-	
-
+	ball.m_speed = vec2(1, 1)*4.f;
+	for (int i = 0; i < PLAYER_MAX; i++) {
+		paddles[i].m_height = 64;
+		paddles[i].m_position.y = (windowSize.y - paddles[i].m_height) / 2;
+	}
+	paddles[0].m_position.x = 100;
+	paddles[1].m_position.x = windowSize.x - 100;
 	glutInit(&argc, argv);
 
 	glutInitDisplayMode(GL_DOUBLE);
