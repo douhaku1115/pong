@@ -7,7 +7,9 @@
 #include "Ball.h"
 #include <time.h>
 #include "Paddle.h"
+#include "audio.h"
 #define PLAYER_MAX 2
+#define SCORE_MAX 11
 
 using namespace glm;
 #define BALL_MAX 2
@@ -20,6 +22,8 @@ Ball balls[BALL_MAX];
 Ball ball = { 8 };
 int scores[PLAYER_MAX];
 int wait;
+bool started;
+
 //Rect rect1 = Rect(vec2(100, 100), vec2(100, 200));
 //Rect rect2 = Rect(vec2(windowSize.x/2, windowSize.y / 2), vec2(200, 100));
 
@@ -57,8 +61,10 @@ void display(void) {
 		glPopAttrib();
 	}
 
-	ball.draw();
+	if(wait<=0)
+		ball.draw();
 
+	if(started)
 	for (int i = 0; i < PLAYER_MAX; i++)
 		paddles[i].draw();
 	
@@ -79,56 +85,83 @@ void display(void) {
 };
 
 void idle(void){
-	if (wait > 0)
-		wait--;
+	audioUpdate();
+	if (started) {
+		if (wait > 0) {
+			wait--;
+			if ((wait <= 0) && (scores[0] >= SCORE_MAX)
+				|| (scores[1] >= SCORE_MAX)) {
+				started = false;
+			}
+		}
+		float paddleSpeed = 8;
+		if (keys['w']) paddles[0].m_position.y -= paddleSpeed;
+		if (keys['s']) paddles[0].m_position.y += paddleSpeed;
+		if (keys['i']) paddles[1].m_position.y -= paddleSpeed;
+		if (keys['k']) paddles[1].m_position.y += paddleSpeed;
 
-	float paddleSpeed = 8;
-	if (keys['w']) paddles[0].m_position.y -= paddleSpeed;
-	if (keys['s']) paddles[0].m_position.y += paddleSpeed;
-	if (keys['i']) paddles[1].m_position.y -= paddleSpeed;
-	if (keys['k']) paddles[1].m_position.y += paddleSpeed;
+		for (int i = 0; i < PLAYER_MAX; i++) {
+			paddles[i].m_position.y = max(paddles[i].m_position.y, 0.f);
+			paddles[i].m_position.y = min(paddles[i].m_position.y, windowSize.y - paddles[i].m_height);
 
-	for (int i = 0; i < PLAYER_MAX; i++) {
-		paddles[i].m_position.y = max(paddles[i].m_position.y, 0.f);
-		paddles[i].m_position.y = min(paddles[i].m_position.y, windowSize.y-paddles[i].m_height);
-
+		}
 	}
 	if (wait <= 0) {
 		ball.update();
 
 		if ((ball.m_position.x < 0)
 			|| (ball.m_position.x >= windowSize.x)) {
-			if (ball.m_position.x < 0)
-				scores[1]++;
-			else
-				scores[0]++;
+			if (started) {     //start game
+				audioLength(1000);
+				audioDecay(0);
+				audioFreq(440/4);
+				audioPlay();
+				if (ball.m_position.x < 0)
+					scores[1]++;
+				else
+					scores[0]++;
 
-			wait = 60;
+				wait = 60;
 
-			ball.m_position.x = windowSize.x / 2;
-			ball.m_lastPosition = ball.m_position;
-			//ball.m_position = ball.m_lastPosition;
-			//ball.m_speed.x *=-1 ;
-		}
-		if (ball.m_position.y < 0) {
-			ball.m_position = ball.m_lastPosition;
-			ball.m_speed.y = fabs(ball.m_speed.y);
-		}
-		if (ball.m_position.y >= windowSize.y) {
-			ball.m_position = ball.m_lastPosition;
-			ball.m_speed.y = -fabs(ball.m_speed.y);
-		}
+				ball.m_position.x = windowSize.x / 2;
+				ball.m_lastPosition = ball.m_position;
+			}
+			else {   //ƒfƒ‚’†
 
-
-
-		for (int i = 0; i < PLAYER_MAX; i++) {
-			if (paddles[i].intersectBall(ball)) {
 				ball.m_position = ball.m_lastPosition;
 				ball.m_speed.x *= -1;
+			}
+		}
+		if ((ball.m_position.y < 0)||
+			(ball.m_position.y >= windowSize.y) ){
+			if (started) {
+				audioDecay(.9);
+				audioFreq(440/2);
+				audioPlay();
+			}
+			ball.m_position = ball.m_lastPosition;
+			ball.m_speed.y *=-1 ;
+		}
+		/*if (ball.m_position.y >= windowSize.y) {
+			ball.m_position = ball.m_lastPosition;
+			ball.m_speed.y = -fabs(ball.m_speed.y);
+		}*/
 
-				float paddleCenterY = paddles[i].m_position.y + paddles[i].m_height / 2;
-				float subMax = paddles[i].m_height;
-				ball.m_speed.y = (ball.m_position.y - paddleCenterY) / subMax * 16;
+
+		if (started) {
+			for (int i = 0; i < PLAYER_MAX; i++) {
+				if (paddles[i].intersectBall(ball)) {
+					audioWaveform(AUDIO_WAVEFORM_PULSE_50);
+					audioDecay(.9);
+					audioFreq(440 * 1.5);
+					audioPlay();
+					ball.m_position = ball.m_lastPosition;
+					ball.m_speed.x *= -1;
+
+					float paddleCenterY = paddles[i].m_position.y + paddles[i].m_height / 2;
+					float subMax = paddles[i].m_height;
+					ball.m_speed.y = (ball.m_position.y - paddleCenterY) / subMax * 16;
+				}
 			}
 		}
 	}
@@ -149,6 +182,20 @@ void reshape(int width, int height) {
 void keyboard(unsigned char key, int x, int y) {
 	if (key == 0x1b)
 		exit(0);
+	if (!started) {
+		for (int i = 0; i < PLAYER_MAX; i++) {
+			scores[i] = 0;
+			paddles[i].m_height = 64;
+			paddles[i].m_position.y = (windowSize.y - paddles[i].m_height) / 2;
+		}
+		paddles[0].m_position.x = 100;
+		paddles[1].m_position.x = windowSize.x - 100;
+		
+		ball.m_position=
+			ball.m_lastPosition= vec2(windowSize.x, windowSize.y)/2.f;
+
+		started = true;
+	}
 	//printf("keyboard:\'%c\'(%#x)\n", key, key);
 	keys[key] = true;
 }
@@ -162,12 +209,8 @@ void passiveMotion(int x, int y) {
 int main(int argc, char* argv[]) {
 	srand(time(NULL));
 	ball.m_speed = vec2(1, 1)*4.f;
-	for (int i = 0; i < PLAYER_MAX; i++) {
-		paddles[i].m_height = 64;
-		paddles[i].m_position.y = (windowSize.y - paddles[i].m_height) / 2;
-	}
-	paddles[0].m_position.x = 100;
-	paddles[1].m_position.x = windowSize.x - 100;
+	audioInit();
+	
 	glutInit(&argc, argv);
 
 	glutInitDisplayMode(GL_DOUBLE);
