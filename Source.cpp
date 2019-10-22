@@ -18,8 +18,10 @@ Paddle paddle;
 Paddle paddles[PLAYER_MAX];
 Ball balls[BALL_MAX];
 Ball ball = { 8 };
-Rect rect1 = Rect(vec2(100, 100), vec2(100, 200));
-Rect rect2 = Rect(vec2(windowSize.x/2, windowSize.y / 2), vec2(200, 100));
+int scores[PLAYER_MAX];
+int wait;
+//Rect rect1 = Rect(vec2(100, 100), vec2(100, 200));
+//Rect rect2 = Rect(vec2(windowSize.x/2, windowSize.y / 2), vec2(200, 100));
 
 void display(void) {
 	
@@ -62,16 +64,14 @@ void display(void) {
 	
 
 	fontBegin();
-	fontSetColor(0, 0xff, 0);
-	fontSetSize(FONT_DEFAULT_SIZE);//FONT_DEFAULT_SIZE/40);
-	float lineHeight = fontGetSize()*1.5;
-	float y = 0;
-	
-	
+	//fontSetColor(0, 0xff, 0);
+	fontSetHeight(FONT_DEFAULT_HEIGHT);//FONT_DEFAULT_SIZE/40);
 	fontSetWeight(fontGetWeightMax());
-	y = fontGetWeight()/2;
-	fontSetPosition(0, y );
-	//fontDraw("\nBB\nCCC\nDDDD\nEEEEE");
+	float y = fontGetWeight();
+	for (int i = 0; i < PLAYER_MAX; i++) {
+		fontSetPosition(windowSize.x/4-80+windowSize.x/2*i, y);
+		fontDraw("%2d",scores[i]);
+}
 	
 	fontEnd();
 
@@ -79,6 +79,9 @@ void display(void) {
 };
 
 void idle(void){
+	if (wait > 0)
+		wait--;
+
 	float paddleSpeed = 8;
 	if (keys['w']) paddles[0].m_position.y -= paddleSpeed;
 	if (keys['s']) paddles[0].m_position.y += paddleSpeed;
@@ -90,33 +93,43 @@ void idle(void){
 		paddles[i].m_position.y = min(paddles[i].m_position.y, windowSize.y-paddles[i].m_height);
 
 	}
-	ball.update();
+	if (wait <= 0) {
+		ball.update();
 
-	if (ball.m_position.y < 0) {
-		ball.m_position = ball.m_lastPosition;
-		ball.m_speed.y = fabs(ball.m_speed.y);
-	}
-	if (ball.m_position.y >= windowSize.y) {
-		ball.m_position = ball.m_lastPosition;
-		ball.m_speed.y = -fabs(ball.m_speed.y);
-	}
-	if (ball.m_position.x >= windowSize.x) {
-		ball.m_position = ball.m_lastPosition;
-		ball.m_speed.x = -fabs(ball.m_speed.x);
-	}
-	if (ball.m_position.x < 0) {
-		ball.m_position = ball.m_lastPosition;
-		ball.m_speed.x = fabs(ball.m_speed.x);
-	}
+		if ((ball.m_position.x < 0)
+			|| (ball.m_position.x >= windowSize.x)) {
+			if (ball.m_position.x < 0)
+				scores[1]++;
+			else
+				scores[0]++;
 
-	for (int i = 0; i < PLAYER_MAX; i++) {
-		if (paddles[i].intersectBall(ball)) {
+			wait = 60;
+
+			ball.m_position.x = windowSize.x / 2;
+			ball.m_lastPosition = ball.m_position;
+			//ball.m_position = ball.m_lastPosition;
+			//ball.m_speed.x *=-1 ;
+		}
+		if (ball.m_position.y < 0) {
 			ball.m_position = ball.m_lastPosition;
-			ball.m_speed.x *= -1;
+			ball.m_speed.y = fabs(ball.m_speed.y);
+		}
+		if (ball.m_position.y >= windowSize.y) {
+			ball.m_position = ball.m_lastPosition;
+			ball.m_speed.y = -fabs(ball.m_speed.y);
+		}
 
-			float paddleCenterY = paddles[i].m_position.y + paddles[i].m_height / 2;
-			float subMax = paddles[i].m_height;
-			ball.m_speed.y = (ball.m_position.y - paddleCenterY)/subMax*16;
+
+
+		for (int i = 0; i < PLAYER_MAX; i++) {
+			if (paddles[i].intersectBall(ball)) {
+				ball.m_position = ball.m_lastPosition;
+				ball.m_speed.x *= -1;
+
+				float paddleCenterY = paddles[i].m_position.y + paddles[i].m_height / 2;
+				float subMax = paddles[i].m_height;
+				ball.m_speed.y = (ball.m_position.y - paddleCenterY) / subMax * 16;
+			}
 		}
 	}
 	
