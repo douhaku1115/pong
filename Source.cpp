@@ -10,7 +10,8 @@
 #include "audio.h"
 #define PLAYER_MAX 2
 #define SCORE_MAX 11
-
+#define PADDLE_SPEED 8.f
+#define BALL_Y_SPEED_MAX 8.f
 using namespace glm;
 #define BALL_MAX 2
 ivec2 windowSize = { 800, 600 };
@@ -95,10 +96,17 @@ void idle(void){
 			}
 		}
 		float paddleSpeed = 8;
-		if (keys['w']) paddles[0].m_position.y -= paddleSpeed;
-		if (keys['s']) paddles[0].m_position.y += paddleSpeed;
-		if (keys['i']) paddles[1].m_position.y -= paddleSpeed;
-		if (keys['k']) paddles[1].m_position.y += paddleSpeed;
+		if (keys['w']) paddles[0].m_position.y -= PADDLE_SPEED;
+		if (keys['s']) paddles[0].m_position.y += PADDLE_SPEED;
+		//if (keys['i']) paddles[1].m_position.y -= PADDLE_SPEED;
+		//if (keys['k']) paddles[1].m_position.y += PADDLE_SPEED;
+		{
+			float centerY = paddles[1].m_position.y + paddles[1].m_height / 2;
+			if (ball.m_position.y < centerY- paddleSpeed)
+				paddles[1].m_position.y -= paddleSpeed;
+			if (ball.m_position.y > centerY+ paddleSpeed)
+				paddles[1].m_position.y += paddleSpeed;
+		}
 
 		for (int i = 0; i < PLAYER_MAX; i++) {
 			paddles[i].m_position.y = max(paddles[i].m_position.y, 0.f);
@@ -125,6 +133,8 @@ void idle(void){
 
 				ball.m_position.x = windowSize.x / 2;
 				ball.m_lastPosition = ball.m_position;
+				ball.m_speed.y = max(ball.m_speed.y, -PADDLE_SPEED);
+				ball.m_speed.y = min(ball.m_speed.y, PADDLE_SPEED);
 			}
 			else {   //ƒfƒ‚’†
 
@@ -159,8 +169,8 @@ void idle(void){
 					ball.m_speed.x *= -1;
 
 					float paddleCenterY = paddles[i].m_position.y + paddles[i].m_height / 2;
-					float subMax = paddles[i].m_height;
-					ball.m_speed.y = (ball.m_position.y - paddleCenterY) / subMax * 16;
+					float subMax = paddles[i].m_height/2;
+					ball.m_speed.y = (ball.m_position.y - paddleCenterY) / subMax * BALL_Y_SPEED_MAX;
 				}
 			}
 		}
