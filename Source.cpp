@@ -34,6 +34,27 @@ void display(void) {
 	glMatrixMode(GL_MODELVIEW);//GLenum mode
 	glLoadIdentity();
 	
+	{
+		GLfloat range[2];
+		glGetFloatv(
+			GL_LINE_WIDTH_RANGE,//GLenum pname, 
+			range);//GLfloat * params
+		glPushAttrib(GL_ALL_ATTRIB_BITS);
+		glEnable(GL_LINE_STIPPLE);//GLenum cap)
+		glLineStipple(
+		range[1],      //GLint factor,;
+		0x5555);	// GLushort pattern)
+		
+		glBegin(GL_LINES);
+		{
+			for (int i=0; i < 2; i++) {
+				glVertex2f(windowSize.x/2,windowSize.y*i);//GLfloat x, GLfloat y);
+			}
+		}
+		glEnd();
+		glPopAttrib();
+	}
+
 	ball.draw();
 
 	for (int i = 0; i < PLAYER_MAX; i++)
